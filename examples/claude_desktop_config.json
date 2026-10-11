@@ -1,0 +1,11 @@
+{
+  "mcpServers": {
+    "filesystem": {
+      "command": "mcp-authz-gateway",
+      "args": [
+        "run", "--policy", "/home/you/.config/mcp-authz-gateway/policy.yaml", "--name", "filesystem",
+        "--", "npx", "-y", "@modelcontextprotocol/server-filesystem", "/home/you/projects"
+      ]
+    }
+  }
+}

@@ -1,0 +1,45 @@
+# mcp-authz-gateway policy. Rules are checked top to bottom; the first match wins.
+# effect: allow | deny | ask (ask = a human approves it in your MCP client or the approval console)
+default: ask
+
+hide_denied_tools: true   # tools that are always denied are removed from the agent's tool list
+redact_results: true      # mask API keys, tokens and private keys in tool results before the agent sees them
+
+approval:
+  mode: auto              # auto: prompt inside the MCP client if it supports elicitation, else queue
+  timeout: 120            # seconds before an unanswered request is denied
+  grant_minutes: 15       # length of an "allow this tool for a while" approval
+
+rules:
+  - name: never touch credentials
+    tools: ["*"]
+    effect: deny
+    when:
+      path: { glob: ["*/.ssh/*", "*/.aws/*", "*/.gnupg/*", "*.pem", "*/.env", "*/.env.*"] }
+
+  - name: read inside the project
+    tools: [read_file, read_text_file, read_multiple_files, list_directory, directory_tree, search_files, get_file_info]
+    effect: allow
+    rate_limit: 60/min
+    when:
+      path: { glob: "/home/*/projects/**" }
+
+  - name: writes need a human
+    tools: [write_file, edit_file, create_directory, move_file]
+    effect: ask
+    when:
+      path: { glob: "/home/*/projects/**" }
+
+  - name: destructive tools are off
+    tools: ["delete_*", "drop_*", "*_delete"]
+    effect: deny
+
+  - name: shell commands need a human, and some never run
+    tools: [run_command, shell, execute_command]
+    effect: deny
+    when:
+      command: { regex: ["\\brm\\s+-rf\\b", "curl[^|]*\\|\\s*(ba)?sh", "\\bmkfs\\b", "\\bdd\\s+if="] }
+
+  - name: other shell commands
+    tools: [run_command, shell, execute_command]
+    effect: ask
